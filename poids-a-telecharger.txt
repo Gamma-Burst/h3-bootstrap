@@ -1,0 +1,22 @@
+# Poids MiniMax H3 Ref2VA + VSA, tailles verifiees au moment de l'ecriture.
+# Format : nom|url|sous-dossier|octets attendus (0 = taille inconnue)
+# Un fichier a la bonne taille n'est jamais retelecharge.
+
+# le modele Ref2VA : image de reference -> video
+minimax_h3_ref2va_pruned_int8_convrot.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors|diffusion_models|20970379616
+
+# encodeur de texte NVFP4 (Blackwell) : le README l'exige
+qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|text_encoders|15687142551
+
+# VAE video INT8 (2,8 Go au lieu de 5,2 en fp16)
+minimax_h3_video_vae_int8_convrot.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_int8_convrot.safetensors|vae|2811065184
+
+# VAE audio (H3 genere aussi le son)
+minimax_h3_audio_vae_fp32.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors|vae|605254808
+
+# le portail VSA : c'est lui qui rend la generation rapide
+fasth3_vsa_gate.safetensors|https://huggingface.co/barelymining/ComfyUI-MiniMax-H3-FastVideo/resolve/main/fasth3_vsa_gate.safetensors|loras|3853522616
+
+# le LoRA 4 pas : sans lui, 50 pas au lieu de 4
+minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|loras|1956193000
+
