@@ -210,7 +210,32 @@ JSON
 cat "$ETAT"
 date -u +"[%Y-%m-%dT%H:%M:%SZ] FIN DE L'INSTALLATION (ok=$INSTALLATION_OK)"
 
-# ── 7. Arret : le pod ne doit pas rester a tourner sans surveillance ────────
+# ── 7. Delai de grace : laisser le temps de LIRE et d'INSPECTER ─────────────
+# Paye deux fois le 2026-10-20 : le script s'arretait dans la seconde qui suivait
+# la fin, donc le pod devenait inaccessible (podResume refuse quand la carte du
+# noeud est prise) et je n'ai jamais pu lire etat.json ni inspecter le nodule.
+# GRACE_MIN=0 supprime l'attente ; MAX_MIN reste le garde-fou absolu.
+GRACE_MIN=${GRACE_MIN:-20}
+if [ "$GRACE_MIN" -gt 0 ]; then
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] delai de grace ${GRACE_MIN} min avant arret (le pod reste lisible)"
+  # Le veilleur est relance sur la fenetre de grace : il couvre cette attente.
+  (
+    sleep $((GRACE_MIN * 60))
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] fin du delai de grace : arret"
+    echo "grace_ecoulee" > "$WS/arret-raison.txt"
+    curl -s -X POST "https://api.runpod.io/graphql" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${RUNPOD_API_KEY:-}" \
+      -d "{\"query\":\"mutation { podStop(input: {podId: \\\"${RUNPOD_POD_ID:-}\\\"}) { id } }\"}" \
+      >> "$LOG" 2>&1
+  ) &
+  GRACE=$!
+  echo "installation_terminee:$INSTALLATION_OK" > "$WS/arret-raison.txt"
+  wait "$GRACE"
+  exit 0
+fi
+
+# ── 7 bis. Arret : le pod ne doit pas rester a tourner sans surveillance ────
 kill "$VEILLEUR" 2>/dev/null
 echo "installation_terminee:$INSTALLATION_OK" > "$WS/arret-raison.txt"
 date -u +"[%Y-%m-%dT%H:%M:%SZ] arret du pod"
