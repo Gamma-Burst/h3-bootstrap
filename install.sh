@@ -139,15 +139,28 @@ telecharger() {  # telecharger <url> <chemin> <octets attendus ou 0 si inconnu>
 
 # Les URL et tailles sont ecrites dans un fichier de manifeste lisible, pour
 # qu'un humain puisse corriger sans relire ce script.
+#
+# ⛔ CORRIGE le 2026-10-20 : ce script LISAIT $WS/poids-a-telecharger.txt sans
+# jamais le telecharger. Sur un pod neuf, le fichier n'existe pas, donc l'etape
+# poids etait silencieusement sautee et l'installation se disait « terminee »
+# avec zero modele. Le manifeste est maintenant recupere depuis le bootstrap
+# public, avec une verification qu'il n'est pas vide.
 MANIFESTE="$WS/poids-a-telecharger.txt"
-if [ -f "$MANIFESTE" ]; then
+URL_MANIFESTE="${MANIFESTE_URL:-https://raw.githubusercontent.com/Gamma-Burst/h3-bootstrap/main/poids-a-telecharger.txt}"
+if [ ! -s "$MANIFESTE" ]; then
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] telechargement du manifeste des poids"
+  curl -fsSL --retry 3 --max-time 120 "$URL_MANIFESTE" -o "$MANIFESTE" \
+    || date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC du telechargement du manifeste"
+fi
+if [ -s "$MANIFESTE" ]; then
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] manifeste present : $(wc -l < "$MANIFESTE") lignes"
   while IFS='|' read -r nom url dep attendu; do
     [ -z "${nom:-}" ] && continue
     case "$nom" in \#*) continue ;; esac
     telecharger "$url" "$WS/models/$dep/$nom" "${attendu:-0}"
   done < "$MANIFESTE"
 else
-  date -u +"[%Y-%m-%dT%H:%M:%SZ] pas de manifeste : etape poids sautee"
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] PAS DE MANIFESTE : aucun poids telecharge"
 fi
 
 # ── 6. Etat final, mesurable ────────────────────────────────────────────────
@@ -157,6 +170,21 @@ find "$WS/models" -type f \( -name '*.safetensors' -o -name '*.gguf' \) \
 echo "--- espace disque ---"
 df -h "$WS" | tail -1
 du -sh "$WS"/* 2>/dev/null | sort -h | tail -10
+
+# ⛔ Un script qui annonce « termine » avec zero modele est pire qu'un script qui
+# plante : il laisse croire que tout va bien. On compte les poids et on refuse
+# de pretendre que l'installation a reussi s'il n'y en a pas au moins 5.
+NB_POIDS=$(find "$WS/models" -type f -name '*.safetensors' 2>/dev/null | wc -l)
+OCTETS_POIDS=$(du -sb "$WS/models" 2>/dev/null | cut -f1)
+OCTETS_POIDS=${OCTETS_POIDS:-0}
+date -u +"[%Y-%m-%dT%H:%M:%SZ] $NB_POIDS fichier(s) de poids, $OCTETS_POIDS octets"
+if [ "$NB_POIDS" -lt 5 ]; then
+  INSTALLATION_OK=0
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] ⛔ INSTALLATION INCOMPLETE : $NB_POIDS poids au lieu de 6"
+else
+  INSTALLATION_OK=1
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] installation des poids complete"
+fi
 
 # Test de chargement a vide : ComfyUI demarre-t-il et voit-il le nodule ?
 date -u +"[%Y-%m-%dT%H:%M:%SZ] >>> test de demarrage ComfyUI (30 s)"
@@ -172,18 +200,22 @@ cat > "$ETAT" <<JSON
   "termine_le": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "comfyui": "$(git -C "$WS/ComfyUI" rev-parse HEAD 2>/dev/null)",
   "nodule": "$(git -C "$NODE" rev-parse HEAD 2>/dev/null)",
+  "poids_fichiers": $NB_POIDS,
+  "poids_octets": $OCTETS_POIDS,
+  "installation_ok": $INSTALLATION_OK,
   "test_comfyui_code": $CODE,
   "log": "$LOG"
 }
 JSON
 cat "$ETAT"
-date -u +"[%Y-%m-%dT%H:%M:%SZ] FIN DE L'INSTALLATION"
+date -u +"[%Y-%m-%dT%H:%M:%SZ] FIN DE L'INSTALLATION (ok=$INSTALLATION_OK)"
 
 # ── 7. Arret : le pod ne doit pas rester a tourner sans surveillance ────────
 kill "$VEILLEUR" 2>/dev/null
-echo "installation_terminee" > "$WS/arret-raison.txt"
+echo "installation_terminee:$INSTALLATION_OK" > "$WS/arret-raison.txt"
 date -u +"[%Y-%m-%dT%H:%M:%SZ] arret du pod"
 curl -s -X POST "https://api.runpod.io/graphql" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${RUNPOD_API_KEY:-}" \
   -d "{\"query\":\"mutation { podStop(input: {podId: \\\"${RUNPOD_POD_ID:-}\\\"}) { id } }\"}"
+date -u +"[%Y-%m-%dT%H:%M:%SZ] STOP envoye"
