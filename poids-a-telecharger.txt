@@ -20,6 +20,25 @@ fasth3_vsa_gate.safetensors|https://huggingface.co/barelymining/ComfyUI-MiniMax-
 # le LoRA 4 pas : sans lui, 50 pas au lieu de 4
 minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|loras|1956193000
 
+# ── 2026-10-20 : fine-tune Singularity v1.3, variante PRUNED INT8 (ref2va) ──
+# Verifie sur Hugging Face : 3 variantes publiees, 667 313 telechargements le
+# mois dernier, licence apache-2.0 declaree sur la fiche.
+#
+# On prend la PRUNED INT8 et pas les deux autres :
+#   Pruned_v1.3_int8  20 967 647 456 o  <- celle-ci (meme taille que notre
+#                                          ref2va_pruned_int8 valide : 20 970 379 616)
+#   Pruned_v1.3_w4a8  11 767 930 768 o     moitie moins gros, mais w4a8 n'est pas
+#                                          un format que ce workflow sait charger
+#   v1.3_int8         34 004 507 622 o     NON pruned : 13 Go de plus pour rien
+#
+# Pourquoi ce modele : la fiche annonce precisement les deux defauts mesures le
+# 2026-10-20 sur notre rendu de 30 s — « Distant Face Restoration : drastically
+# reduces facial distortion, blurriness and collapsing in medium-to-long shots »
+# et « Clean & De-Oiled Aesthetic : removes heavy unnatural skin shine and glossy
+# textures ». C'est mot pour mot la peau orange plastique et l'oeil ferme vus a
+# t=27 s. Le modele valide reste sur le disque comme repli.
+Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors|https://huggingface.co/WarmBloodAban/Minimax-h3_Singularity/resolve/main/Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors|diffusion_models|20967647456
+
 # RETIRE le 2026-10-20 : MiniMax-H3-X2-Detail-v1.safetensors (5,25 Go).
 # Son auteur qualifie lui-meme ce depot de « A Failed HQ-VAE Experiment » :
 #   - le mode "Detailed" (B32) exige les features down.1.block.1 de l'IMAGE RGB
