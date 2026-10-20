@@ -3,7 +3,14 @@
 # Un fichier a la bonne taille n'est jamais retelecharge.
 
 # le modele Ref2VA : image de reference -> video
-minimax_h3_ref2va_pruned_int8_convrot.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors|diffusion_models|20970379616
+#
+# ⛔ COMMENTE le 2026-10-20, Singularity valide (voir plus bas). Le fichier
+# n'est PAS supprime du volume reseau `ebmxxqmstn` : le decommenter suffit a le
+# retrouver sans retelecharger, et son absence ici ne fait qu'eviter 21 Go de
+# telechargement sur un pod neuf.
+# Pour revenir au modele d'origine : retirer le `#` de la ligne ci-dessous.
+# minimax_h3_ref2va_pruned_int8_convrot.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors|diffusion_models|20970379616
+
 
 # encodeur de texte NVFP4 (Blackwell) : le README l'exige
 qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|text_encoders|15687142551
