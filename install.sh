@@ -142,6 +142,35 @@ if [ "${TORCH_MAJ:-0}" -lt 13 ]; then
   else
     date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC torchvision reste incompatible avec torch : ComfyUI ne demarrera pas"
   fi
+
+  # ── 3 ter. torchaudio : le TROISIEME paquet du trio ──────────────────────
+  # ⛔ Paye le 2026-10-20, apres torchvision. Meme cause, meme silence : torch
+  # passe en cu130, torchaudio reste en cu128. ComfyUI demarre quand meme, donc
+  # rien ne crie — mais le pack Motion Context importe torchaudio dans nodes.py
+  # et ComfyUI journalise seulement :
+  #     Cannot import .../ComfyUI-H3-Motion-Context : PyTorch has CUDA 13.0
+  #     whereas TorchAudio has CUDA 12.8
+  #     Import times for custom nodes: 0.0 seconds (IMPORT FAILED)
+  # Le noeud n'existe pas, et on cherche le bug dans le workflow.
+  # ⛔ Corriger torch seul, ou torch+torchvision, ne suffit pas : les trois
+  # doivent partager le meme CUDA majeur.
+  TA_V=$(python3 -c 'from importlib.metadata import version; print(version("torchaudio").split("+")[0])' 2>/dev/null || true)
+  if [ -n "${TA_V:-}" ]; then
+    if python3 -m pip install --quiet --no-cache-dir \
+         --index-url https://download.pytorch.org/whl/cu130 \
+         "torchaudio==${TA_V}+cu130" --force-reinstall --no-deps; then
+      date -u +"[%Y-%m-%dT%H:%M:%SZ] torchaudio ${TA_V}+cu130 installe"
+    else
+      date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torchaudio ${TA_V}+cu130"
+    fi
+  else
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] torchaudio absent : rien a aligner"
+  fi
+  if python3 -c 'import torch, torchaudio; assert "cu" + torch.version.cuda.replace(".", "") == torchaudio.__version__.split("+")[-1], (torch.version.cuda, torchaudio.__version__)'; then
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] torchaudio importable ($(python3 -c 'import torchaudio; print(torchaudio.__version__)'))"
+  else
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC torchaudio reste incompatible : Motion Context ne chargera pas"
+  fi
 else
   date -u +"[%Y-%m-%dT%H:%M:%SZ] torch deja en cu$TORCH_CUDA (>= 13) : rien a faire"
 fi
