@@ -115,12 +115,32 @@ if [ "${TORCH_MAJ:-0}" -lt 13 ]; then
     date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torch cu130 : VSA ne marchera pas"
   fi
   # torchvision doit suivre la meme version de CUDA, sinon il casse a l'import.
-  TV_V=$(python3 -c 'import torchvision; print(torchvision.__version__.split("+")[0])' 2>/dev/null || true)
+  #
+  # ⛔ Paye le 2026-10-20, et le piege est retors : cette correction EXISTAIT,
+  # mais sa sonde de version faisait `import torchvision`. Or torch vient de
+  # passer en cu130 alors que torchvision est encore en cu128 : l'import leve
+  #     RuntimeError: PyTorch has CUDA Version=13.0 and torchvision has CUDA
+  #     Version=12.8. Please reinstall the torchvision that matches...
+  # donc TV_V restait vide, la correction etait sautee EN SILENCE (2>/dev/null),
+  # et ComfyUI mourait plus loin sur `from torchvision import transforms`.
+  # ➜ On lit la version par les METADONNEES, qui n'importent rien.
+  TV_V=$(python3 -c 'from importlib.metadata import version; print(version("torchvision").split("+")[0])' 2>/dev/null || true)
   if [ -n "${TV_V:-}" ]; then
-    python3 -m pip install --quiet --no-cache-dir \
-      --index-url https://download.pytorch.org/whl/cu130 \
-      "torchvision==${TV_V}+cu130" 2>/dev/null \
-      && date -u +"[%Y-%m-%dT%H:%M:%SZ] torchvision ${TV_V}+cu130 installe"
+    if python3 -m pip install --quiet --no-cache-dir \
+         --index-url https://download.pytorch.org/whl/cu130 \
+         "torchvision==${TV_V}+cu130"; then
+      date -u +"[%Y-%m-%dT%H:%M:%SZ] torchvision ${TV_V}+cu130 installe"
+    else
+      date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torchvision ${TV_V}+cu130"
+    fi
+  else
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] ATTENTION torchvision absent des metadonnees"
+  fi
+  # Relecture : un pip qui rend 0 ne prouve pas que l'import fonctionne.
+  if python3 -c 'import torch, torchvision; from torchvision import transforms; assert "cu" + torch.version.cuda.replace(".", "") == torchvision.__version__.split("+")[-1], (torch.version.cuda, torchvision.__version__)'; then
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] torchvision importable ($(python3 -c 'import torchvision; print(torchvision.__version__)'))"
+  else
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC torchvision reste incompatible avec torch : ComfyUI ne demarrera pas"
   fi
 else
   date -u +"[%Y-%m-%dT%H:%M:%SZ] torch deja en cu$TORCH_CUDA (>= 13) : rien a faire"
