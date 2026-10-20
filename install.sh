@@ -172,6 +172,50 @@ fi
 # git clone --depth 1 https://github.com/TripleHeadedMonkey/ComfyUI-MiniMaxH3_LatentUpscaler.git \
 #   "$WS/ComfyUI/custom_nodes/ComfyUI-MiniMaxH3_LatentUpscaler"
 
+# ── 4 ter. H3 Motion Context : le chainage latent qui supprime les coutures ──
+# Verifie le 2026-10-20 : le depot existe, v0.7.1, 1,3k etoiles, GPL-3.0.
+#
+# Pourquoi ce pack et pas une re-injection d'image : ref2va seul repart d'une
+# IMAGE ; le raccord passe donc par des pixels (decodage, redimensionnement,
+# re-encodage), et c'est exactement la ou naissent la derive de couleur et le
+# ramollissement le long d'une chaine. Motion Context preleve les dernieres
+# frames DIRECTEMENT DANS LE LATENT du clip precedent : les frames epinglees
+# sont les memes nombres, bit pour bit, et l'audio est prolonge au lieu d'etre
+# rejoue.
+#
+# ⛔ NE PAS installer aussi le fork seitanism/ComfyUI-H3-Motion-Context-MultiRef.
+# Le README est explicite : « Only install this once. A fork of this repo (...)
+# will all load. » Deux copies = deux enregistrements des memes noeuds, et
+# rien ne dit laquelle repond. Le fork ajoute AV Extension / Music Video / V2V,
+# dont nous n'avons pas besoin ici, et reclame VHS + KJNodes + SolAttn + MAINodes
+# en plus : quatre packs de plus a faire echouer.
+#
+# ⛔ Version : exige ComfyUI >= 0.34.0 (les ancres de keyframe arbitraires).
+# L'image installe 0.42.0, donc v0.7.1 convient. Sur une image plus ancienne, le
+# pack REFUSE de tourner et le dit — un echec bruyant, pas un mauvais rendu.
+MC="$WS/ComfyUI/custom_nodes/ComfyUI-H3-Motion-Context"
+if [ ! -d "$MC/.git" ]; then
+  rm -rf "$MC"
+  git clone --depth 1 --branch v0.7.1 \
+    https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context.git "$MC" \
+    || git clone --depth 1 \
+         https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context.git "$MC"
+fi
+if [ -d "$MC" ]; then
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] nodule Motion Context present : $(git -C "$MC" rev-parse --short HEAD 2>/dev/null || echo 'sans git')"
+  for req in requirements.txt pyproject.toml; do
+    if [ -f "$MC/$req" ] && [ "$req" = "requirements.txt" ]; then
+      python3 -m pip install --quiet -r "$MC/$req" \
+        && date -u +"[%Y-%m-%dT%H:%M:%SZ] dependances Motion Context installees"
+    fi
+  done
+  # Le pack s'auto-verifie contre le code de ComfyUI au premier rendu. On note
+  # la version pour pouvoir dater un refus.eventuel.
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] Motion Context pret (auto-controle au 1er rendu)"
+else
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC du clone Motion Context : pas de chainage latent"
+fi
+
 # ── 5. Les poids ────────────────────────────────────────────────────────────
 # Telechargement idempotent : aria2 reprend, et un fichier deja present a la
 # bonne taille n'est pas retelecharge. Chaque poids est VERIFIE par sa taille :
