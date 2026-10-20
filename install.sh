@@ -137,31 +137,20 @@ if [ -f "$NODE/requirements.txt" ]; then
     && date -u +"[%Y-%m-%dT%H:%M:%SZ] dependances du nodule installees"
 fi
 
-# ── 4 bis. Le decodeur 2X (VAE X2 Detail) ───────────────────────────────────
-# ⛔ Le VAE X2 ne s'utilise PAS avec le noeud VAE Decode normal : son auteur
-# exige `MiniMax H3 VAE Decode (fast)` du depot TripleHeadedMonkey. Sans ce
-# noeud, le X2 se charge mais ne double pas la resolution.
-# ⚠️ Et son mode « Detailed » est documente par son auteur comme INAPPLICABLE a
-# la video generee : la branche B32 a besoin des features RGB d'origine, qui
-# n'existent pas pour un latent genere. Seul le 2X spatial est utilisable.
-DECODEUR="$WS/ComfyUI/custom_nodes/ComfyUI-MiniMaxH3_LatentUpscaler"
-if [ ! -d "$DECODEUR" ]; then
-  git clone --depth 1 https://github.com/TripleHeadedMonkey/ComfyUI-MiniMaxH3_LatentUpscaler.git "$DECODEUR" \
-    || date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC du clone du decodeur 2X"
-fi
-if [ -d "$DECODEUR" ]; then
-  date -u +"[%Y-%m-%dT%H:%M:%SZ] decodeur 2X present : $(git -C "$DECODEUR" rev-parse --short HEAD 2>/dev/null)"
-  if [ -f "$DECODEUR/requirements.txt" ]; then
-    python3 -m pip install --quiet -r "$DECODEUR/requirements.txt" 2>/dev/null || true
-  fi
-  # Le workflow et le noeud de detail fournis avec le VAE X2 (archive).
-  mkdir -p "$WS/x2-extra"
-  curl -fsSL --retry 2 --max-time 180 \
-    -o "$WS/x2-extra/ComfyUI-H3-X2-Detailed.zip" \
-    "https://huggingface.co/speach1sdef178/MiniMax-H3-X2-Detail-VAE/resolve/main/custom_node/ComfyUI-H3-X2-Detailed.zip" \
-    && date -u +"[%Y-%m-%dT%H:%M:%SZ] noeud 2X-Detailed telecharge" \
-    || date -u +"[%Y-%m-%dT%H:%M:%SZ] noeud 2X-Detailed indisponible (non bloquant)"
-fi
+# ── 4 bis. RETIRE le 2026-10-20 : le decodeur 2X du VAE X2-Detail ───────────
+# Le depot ComfyUI-MiniMaxH3_LatentUpscaler et le VAE X2 (5,25 Go) ont ete
+# retires. Raison : leur auteur qualifie ce depot de « A Failed HQ-VAE
+# Experiment » — le mode detail exige des features de l'image RGB d'origine,
+# absentes sur un latent genere, et le mode 2X double les pixels sans ajouter
+# d'information. 5,25 Go et un noeud pour aucun gain de detail.
+#
+# Pour le remettre : cloner le depot ci-dessous, decommenter le poids dans
+# poids-a-telecharger.txt, ET utiliser le noeud `MiniMax H3 VAE Decode (fast)`
+# (le VAEDecode normal ne double rien). Reglages valides par l'auteur :
+#   tiling=true, tile_size=256, tile_overlap=64, output_device=cpu,
+#   temporal_tiling=false   (le tuilage n'est pas optionnel en 24 Go)
+# git clone --depth 1 https://github.com/TripleHeadedMonkey/ComfyUI-MiniMaxH3_LatentUpscaler.git \
+#   "$WS/ComfyUI/custom_nodes/ComfyUI-MiniMaxH3_LatentUpscaler"
 
 # ── 5. Les poids ────────────────────────────────────────────────────────────
 # Telechargement idempotent : aria2 reprend, et un fichier deja present a la
