@@ -112,7 +112,7 @@ if [ "${TORCH_MAJ:-0}" -lt 13 ]; then
        "torch==${TORCH_V}+cu130" 2>/dev/null; then
     date -u +"[%Y-%m-%dT%H:%M:%SZ] torch ${TORCH_V}+cu130 installe"
   else
-    date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torch cu130 — VSA ne marchera pas"
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torch cu130 : VSA ne marchera pas"
   fi
   # torchvision doit suivre la meme version de CUDA, sinon il casse a l'import.
   TV_V=$(python3 -c 'import torchvision; print(torchvision.__version__.split("+")[0])' 2>/dev/null || true)
