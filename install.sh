@@ -92,6 +92,40 @@ else
   date -u +"[%Y-%m-%dT%H:%M:%SZ] ATTENTION comfy-kitchen introuvable par pip"
 fi
 
+# ── 3 bis. PyTorch cu130 : OBLIGATOIRE pour que VSA fonctionne ──────────────
+# ⛔ Paye le 2026-10-20. L'image runpod/pytorch:...-cu1290 livre torch+cu128, et
+# ComfyUI desactive alors son backend CUDA (comfy/quant_ops.py) :
+#     if cuda_version < (13,): ck.registry.disable("cuda")
+# Consequence : le nodule Ref2VA-VSA leve BackendNotFoundError a la premiere
+# passe d'attention, et la generation echoue en moins d'une seconde. Le symptome
+# est trompeur — on croit a un probleme de VRAM ou de poids.
+# Meme version de torch (2.9.0), seul le suffixe CUDA change : changement minimal.
+# Ce paquet vit dans le DISQUE CONTENEUR, pas dans /workspace : il est donc a
+# refaire sur un pod neuf, d'ou sa place ici.
+TORCH_CUDA=$(python3 -c 'import torch; print(torch.version.cuda or "0")')
+TORCH_MAJ=${TORCH_CUDA%%.*}
+if [ "${TORCH_MAJ:-0}" -lt 13 ]; then
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] torch+cu$TORCH_CUDA < cu130 : installation de cu130"
+  TORCH_V=$(python3 -c 'import torch; print(torch.__version__.split("+")[0])')
+  if python3 -m pip install --quiet --no-cache-dir \
+       --index-url https://download.pytorch.org/whl/cu130 \
+       "torch==${TORCH_V}+cu130" 2>/dev/null; then
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] torch ${TORCH_V}+cu130 installe"
+  else
+    date -u +"[%Y-%m-%dT%H:%M:%SZ] ECHEC de l'installation de torch cu130 — VSA ne marchera pas"
+  fi
+  # torchvision doit suivre la meme version de CUDA, sinon il casse a l'import.
+  TV_V=$(python3 -c 'import torchvision; print(torchvision.__version__.split("+")[0])' 2>/dev/null || true)
+  if [ -n "${TV_V:-}" ]; then
+    python3 -m pip install --quiet --no-cache-dir \
+      --index-url https://download.pytorch.org/whl/cu130 \
+      "torchvision==${TV_V}+cu130" 2>/dev/null \
+      && date -u +"[%Y-%m-%dT%H:%M:%SZ] torchvision ${TV_V}+cu130 installe"
+  fi
+else
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] torch deja en cu$TORCH_CUDA (>= 13) : rien a faire"
+fi
+
 # ── 4. Le nodule Ref2VA-VSA ─────────────────────────────────────────────────
 NODE="$WS/ComfyUI/custom_nodes/ComfyUI-Ref2VA-VSA"
 if [ ! -d "$NODE" ]; then
@@ -177,10 +211,14 @@ du -sh "$WS"/* 2>/dev/null | sort -h | tail -10
 NB_POIDS=$(find "$WS/models" -type f -name '*.safetensors' 2>/dev/null | wc -l)
 OCTETS_POIDS=$(du -sb "$WS/models" 2>/dev/null | cut -f1)
 OCTETS_POIDS=${OCTETS_POIDS:-0}
-date -u +"[%Y-%m-%dT%H:%M:%SZ] $NB_POIDS fichier(s) de poids, $OCTETS_POIDS octets"
-if [ "$NB_POIDS" -lt 5 ]; then
+# Le nombre attendu vient du MANIFESTE, pas d'une constante ecrite ici : ajouter
+# un poids au manifeste ne doit pas casser le controle.
+NB_ATTENDU=$(grep -vc '^\s*\(#\|$\)' "$MANIFESTE" 2>/dev/null || echo 6)
+NB_ATTENDU=${NB_ATTENDU:-6}
+date -u +"[%Y-%m-%dT%H:%M:%SZ] $NB_POIDS fichier(s) de poids, $OCTETS_POIDS octets (attendu : $NB_ATTENDU)"
+if [ "$NB_POIDS" -lt "$NB_ATTENDU" ]; then
   INSTALLATION_OK=0
-  date -u +"[%Y-%m-%dT%H:%M:%SZ] ⛔ INSTALLATION INCOMPLETE : $NB_POIDS poids au lieu de 6"
+  date -u +"[%Y-%m-%dT%H:%M:%SZ] INSTALLATION INCOMPLETE : $NB_POIDS poids au lieu de $NB_ATTENDU"
 else
   INSTALLATION_OK=1
   date -u +"[%Y-%m-%dT%H:%M:%SZ] installation des poids complete"
