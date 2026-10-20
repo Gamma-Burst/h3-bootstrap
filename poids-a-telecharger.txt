@@ -20,9 +20,15 @@ fasth3_vsa_gate.safetensors|https://huggingface.co/barelymining/ComfyUI-MiniMax-
 # le LoRA 4 pas : sans lui, 50 pas au lieu de 4
 minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/loras/minimax_h3_ref2v_turbo_4step_v0.1_comfyui_bf16.safetensors|loras|1956193000
 
-# VAE "X2 Detail" (5,25 Go) : decodeur qui DOUBLE la resolution et ajoute du
-# micro-detail a la fin. On diffuse en 960x544 (4x moins de pixels qu'en 1920x1080)
-# et on sort du 1920x1080. Depot sous conditions mais accessible sans jeton
-# (verifie HTTP 200 le 2026-10-20).
-MiniMax-H3-X2-Detail-v1.safetensors|https://huggingface.co/speach1sdef178/MiniMax-H3-X2-Detail-VAE/resolve/main/MiniMax-H3-X2-Detail-v1.safetensors|vae|5246877148
+# RETIRE le 2026-10-20 : MiniMax-H3-X2-Detail-v1.safetensors (5,25 Go).
+# Son auteur qualifie lui-meme ce depot de « A Failed HQ-VAE Experiment » :
+#   - le mode "Detailed" (B32) exige les features down.1.block.1 de l'IMAGE RGB
+#     D'ORIGINE, absentes quand le latent sort du bruit. Inutilisable en generation.
+#   - le mode 2X decode double les DIMENSIONS mais pas l'information :
+#     « the larger output did not contain a proportional increase in useful detail ».
+# 5,25 Go et un noeud supplementaire pour aucun gain de detail : hors du pod.
+# Pour le remettre un jour : decommenter la ligne ci-dessous ET cloner
+# https://github.com/TripleHeadedMonkey/ComfyUI-MiniMaxH3_LatentUpscaler
+# (le noeud VAEDecode normal ne double rien ; il faut `MiniMax H3 VAE Decode (fast)`).
+# MiniMax-H3-X2-Detail-v1.safetensors|https://huggingface.co/speach1sdef178/MiniMax-H3-X2-Detail-VAE/resolve/main/MiniMax-H3-X2-Detail-v1.safetensors|vae|5246877148
 
